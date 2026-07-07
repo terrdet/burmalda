@@ -1,0 +1,26 @@
+base_directory: ./dataset
+feature:
+  frames: 5
+  hop_length: 512
+  n_fft: 1024
+  n_mels: 64
+  power: 2.0
+fit:
+  batch_size: 512
+  beta: 0.1
+  bottleneck_size: 3
+  denoising_std: 0.1
+  epochs: 50
+  learning_rate: 0.001
+  model_type: conditional_vae
+  alpha: 0.1
+  normalize: false
+  score_mode: max
+  shuffle: true
+  validation_split: 0.1
+  verbose: 1
+model_directory: ./model
+pickle_directory: ./pickle
+result_directory: ./result
+result_file: result.yaml
+admin_password: admin123

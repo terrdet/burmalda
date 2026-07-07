@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIMII Baseline</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1117;color:#e6edf3;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{background:#161b22;border-bottom:1px solid #30363d;padding:0 16px;height:40px;min-height:40px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.topbar-title svg{width:18px;height:18px}
+.topbar-title span{background:linear-gradient(135deg,#58a6ff,#bc8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.topbar-info{display:flex;align-items:center;gap:12px;font-size:12px;color:#8b949e}
+.topbar-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.topbar-dot.idle{background:#8b949e}
+.topbar-dot.busy{background:#d29922}
+.topbar-dot.ok{background:#3fb950}
+
+.tiling-container{flex:1;display:flex;flex-direction:column;gap:8px;padding:8px;min-height:0;overflow:hidden}
+.row{display:flex;gap:8px;flex:1;min-height:0;overflow:hidden}
+
+.tile{background:#161b22;border:1px solid #30363d;border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+.tile:has(.tile-header:hover){border-color:#484f58}
+.tile-header{background:#0d1117;border-bottom:1px solid #21262d;padding:6px 12px;font-size:12px;font-weight:600;color:#8b949e;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em}
+.tile-header .hl{display:flex;align-items:center;gap:6px}
+.tile-header .hl svg{width:14px;height:14px;opacity:.6}
+.tile-body{flex:1;overflow:auto;padding:8px;font-size:13px;min-height:0}
+.tile-body::-webkit-scrollbar{width:4px;height:4px}
+.tile-body::-webkit-scrollbar-track{background:transparent}
+.tile-body::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px}
+
+.handle{background:#21262d;flex-shrink:0;position:relative}
+.handle:hover{background:#30363d}
+.handle-h{height:3px;cursor:row-resize}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:5px 8px;font-size:12px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #21262d;background:#0d1117;position:sticky;top:0}
+td{padding:5px 8px;border-bottom:1px solid #21262d;color:#e6edf3}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.tag{background:rgba(88,166,255,0.1);color:#58a6ff;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:600}
+
+input[type=checkbox]{-webkit-appearance:none;appearance:none;width:16px;height:16px;border:1.5px solid #30363d;border-radius:6px;background:#0d1117;cursor:pointer;position:relative;flex-shrink:0;margin:0;transition:all .15s}
+input[type=checkbox]:hover{border-color:#58a6ff}
+input[type=checkbox]:checked{background:#238636;border-color:#238636}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+input[type=checkbox]:focus-visible{outline:2px solid #58a6ff;outline-offset:1px}
+.ds-item input{width:14px;height:14px}
+
+.progress-bar{background:#21262d;height:4px;border-radius:4px;overflow:hidden;margin:4px 0}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#58a6ff,#bc8cff);border-radius:4px;transition:width .3s}
+
+.metrics{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.metric{background:#0d1117;border:1px solid #21262d;padding:5px 10px;border-radius:10px;text-align:center;flex:1;min-width:70px}
+.metric .val{font-size:16px;font-weight:700;color:#58a6ff;font-variant-numeric:tabular-nums;line-height:1.2}
+.metric .lbl{font-size:9px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.metric.green .val{color:#3fb950}
+.metric.yellow .val{color:#d29922}
+.metric.red .val{color:#f85149}
+
+.log-area{background:#0d1117;border:1px solid #21262d;padding:6px 8px;flex:1;overflow-y:auto;min-height:0;font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace;font-size:13px;line-height:1.6;color:#8b949e}
+.log-area::-webkit-scrollbar{width:4px;height:4px}
+.log-area::-webkit-scrollbar-track{background:transparent}
+.log-area::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px}
+.log-area .ok{color:#3fb950}
+.log-area .warn{color:#d29922}
+.log-area .err{color:#f85149}
+
+.score{font-size:24px;font-weight:800;color:#58a6ff;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.score.high{color:#f85149}
+.score.low{color:#3fb950}
+.score-label{font-size:10px;color:#8b949e;margin-top:2px}
+
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+.cfg-field{background:#0d1117;border:1px solid #21262d;padding:4px 8px;border-radius:8px}
+.cfg-field label{display:block;font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em}
+.cfg-field input,.cfg-field select{background:transparent;border:none;color:#e6edf3;font-size:13px;width:100%;padding:2px 0;outline:none;cursor:pointer}
+.cfg-field input[type=number]::-webkit-inner-spin-button,.cfg-field input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;appearance:none;margin:0}
+.cfg-field input[type=number]{-moz-appearance:textfield}
+.btn-group{display:flex;gap:0;border:1px solid #30363d;border-radius:6px;overflow:hidden}
+.btn-group-btn{flex:1;text-align:center;padding:3px 4px;font-size:11px;color:#8b949e;cursor:pointer;transition:all .12s;border-right:1px solid #30363d}
+.btn-group-btn:last-child{border-right:none}
+.btn-group-btn:hover{color:#e6edf3;background:#1f242b}
+.btn-group-btn.active{color:#58a6ff;background:#1f6feb22}
+.cfg-field select option{background:#161b22;color:#e6edf3}
+.cfg-field:focus-within{border-color:#58a6ff}
+
+.btn{background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:5px 12px;font-size:13px;cursor:pointer;border-radius:6px;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font-weight:500}
+.btn:hover{background:#30363d;border-color:#484f58}
+.btn-primary{background:#238636;border-color:#238636;color:#fff}
+.btn-primary:hover{background:#2ea043}
+.btn-danger{background:#da3633;border-color:#da3633;color:#fff}
+.btn-danger:hover{background:#f85149}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.btn-sm{padding:3px 8px;font-size:10px}
+.btn-row{display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap}
+.btn svg{width:12px;height:12px}
+
+.hist{display:flex;align-items:flex-end;height:50px;gap:1px;margin-top:4px}
+.hist-bar{flex:1;min-width:0;display:flex;flex-direction:column-reverse;align-items:center}
+.hist-fill-n{width:100%;background:#3fb950;opacity:.6;transition:height .2s;border-radius:2px 2px 0 0}
+.hist-fill-a{width:100%;background:#f85149;opacity:.6;transition:height .2s;border-radius:2px 2px 0 0}
+.hist-lbl{font-size:7px;color:#484f58;margin-top:1px}
+
+.detail{display:none;padding:8px;background:#0d1117;border:1px solid #21262d;margin:4px 0;font-size:13px;border-radius:10px}
+.detail.open{display:block}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-col{border:1px solid #21262d;border-radius:8px;padding:6px 8px}
+.stat-col .title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.stat-col.green .title{color:#3fb950}
+.stat-col.red .title{color:#f85149}
+.stat-col table{font-size:10px}
+.stat-col table td{padding:1px 4px;border:none;font-size:10px}
+.stat-col table td:last-child{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+
+.hidden{display:none!important}
+input[type=file]{background:#0d1117;border:1px solid #21262d;color:#e6edf3;padding:4px;font-size:11px;border-radius:8px;width:100%}
+input[type=file]::file-selector-button{background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:10px;margin-right:6px;transition:all .15s}
+.sel-col{display:flex;flex-direction:column;gap:4px;width:100%}
+.sel-col-label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em}
+.sel-col .btn-group{width:100%}
+.sel-col .btn-group-btn{font-size:11px;padding:4px 6px}
+
+.ds-tree{font-size:13px}
+.ds-group{background:#0d1117;border:1px solid #21262d;border-radius:8px;margin:3px 0}
+.ds-group[open]{background:transparent}
+.ds-summary{padding:4px 8px;cursor:pointer;font-weight:600;color:#e6edf3;font-size:13px;display:flex;align-items:center;gap:4px;user-select:none;list-style:none}
+.ds-summary::-webkit-details-marker{display:none}
+.ds-summary::before{content:'\25B6';font-size:8px;color:#484f58;transition:transform .15s;margin-right:4px}
+.ds-group[open]>.ds-summary::before{transform:rotate(90deg)}
+.ds-summary:hover{color:#58a6ff}
+.ds-children{padding:2px 4px 4px 16px}
+.ds-ids{display:flex;flex-wrap:wrap;gap:2px}
+.ds-item{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;cursor:pointer;border-radius:6px;font-size:13px;color:#8b949e}
+.ds-item:hover{background:rgba(255,255,255,0.04);color:#e6edf3}
+.ds-item input{width:12px;height:12px}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+body.user-mode [data-admin]{display:none!important}
+.blink{animation:blink 1s infinite}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;justify-content:center;align-items:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#161b22;border:1px solid #30363d;border-radius:16px;width:90vw;height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-header{background:#0d1117;border-bottom:1px solid #21262d;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-header .hl{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.04em}
+.modal-header .hl svg{width:14px;height:14px;opacity:.6}
+.modal-header button{background:transparent;border:none;color:#8b949e;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:18px;line-height:1}
+.modal-header button:hover{color:#e6edf3;background:#21262d}
+.modal-body{flex:1;overflow:auto;padding:16px;font-size:13px;min-height:0}
+.modal-body::-webkit-scrollbar{width:4px;height:4px}
+.modal-body::-webkit-scrollbar-track{background:transparent}
+.modal-body::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px}
+
+@media(max-width:900px){
+body{overflow:auto;height:auto;min-height:100vh;user-select:auto}
+.tiling-container{overflow:visible;height:auto;padding:4px;gap:4px}
+.row{flex-direction:column;flex:none!important;height:auto!important;min-height:auto!important;gap:4px}
+.row .tile{min-height:auto!important;flex:none!important}
+.tile{border-radius:12px}
+.tile-body{min-height:120px;max-height:50vh}
+.topbar{padding:0 10px;height:34px;min-height:34px}
+.topbar-title{font-size:11px}
+.topbar-info{font-size:10px;gap:6px}
+.btn{padding:8px 14px;font-size:14px;min-height:44px}
+.btn-sm{padding:6px 10px;font-size:12px;min-height:36px}
+.btn-row{gap:6px}
+.cfg-grid{grid-template-columns:1fr 1fr}
+.cfg-field input,.cfg-field select{font-size:16px}
+.ds-summary{padding:8px 10px;font-size:14px}
+.ds-item{padding:6px 8px;font-size:14px;gap:6px}
+.ds-item input{width:18px;height:18px}
+.ds-children{padding:4px 4px 8px 20px}
+.modal-box{width:100vw;height:100vh;border-radius:0;border:none}
+.modal-header{padding:10px 12px}
+.modal-body{padding:12px}
+table{font-size:14px}
+th,td{padding:8px 6px}
+th{font-size:11px}
+.metrics{gap:4px}
+.metric{min-width:60px;padding:6px 6px}
+.metric .val{font-size:14px}
+.log-area{font-size:14px;padding:8px}
+.score{font-size:22px}
+.btn-group-btn{font-size:14px;padding:10px 8px;min-height:44px}
+.sel-col .btn-group-btn{font-size:14px;padding:10px 8px;min-height:44px}
+.stat-col{padding:8px}
+.stats-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body class="user-mode">
+
+<div class="topbar">
+  <div class="topbar-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    <span>Acoustic Diagnostics</span>
+  </div>
+  <div class="topbar-info">
+    <span><span class="topbar-dot idle" id="statusDot"></span><span id="statusLabel">idle</span></span>
+    <span style="color:#30363d">|</span>
+    <span id="currentTarget" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <button class="btn btn-sm" id="adminBtn" onclick="toggleAdmin()" title="toggle mode" style="font-size:10px;color:#3fb950">TEST</button>
+  </div>
+</div>
+
+<div class="tiling-container">
+  <div class="row" id="adminRow1" style="flex:3">
+    <div class="tile" style="flex:1;min-width:0" data-admin>
+      <div class="tile-header">
+        <span class="hl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          datasets
+        </span>
+        <button class="btn btn-sm" onclick="refreshDatasets()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+      <div class="tile-body" id="datasetsBody">
+        <div class="empty" id="datasetsEmpty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#484f58;font-size:13px;gap:6px"><p>loading&#8230;</p></div>
+        <div id="datasetsTable" style="display:none"></div>
+      </div>
+    </div>
+    <div class="tile" style="flex:1" data-admin>
+      <div class="tile-header">
+        <span class="hl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          training
+        </span>
+        <span id="trainEpochInfo" style="font-size:11px;font-weight:600;color:#8b949e;font-variant-numeric:tabular-nums"></span>
+        <span id="trainEtaInfo" style="font-size:10px;color:#484f58;font-variant-numeric:tabular-nums"></span>
+      </div>
+      <div class="tile-body">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnTrainAll" onclick="startTrain(null)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Train all
+          </button>
+          <button class="btn" id="btnTrainSel" onclick="startTrainSelected()">&#9654; Selected</button>
+          <button class="btn btn-danger" id="btnStop" onclick="stopTrain()" style="display:none">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            Stop
+          </button>
+        </div>
+        <div class="cfg-grid">
+          <div class="cfg-field"><label>epochs</label><input type="number" id="cfg_epochs" value="200"></div>
+          <div class="cfg-field"><label>lr</label><input type="number" step=".0001" id="cfg_lr" value="0.001"></div>
+          <div class="cfg-field"><label>bottleneck</label><input type="number" id="cfg_bottleneck" value="3"></div>
+          <div class="cfg-field"><label>&beta;</label><input type="number" step=".01" id="cfg_beta" value="0.1"></div>
+          <div class="cfg-field"><label>&alpha;</label><input type="number" step=".01" id="cfg_alpha" value="0.1"></div>
+          <div class="cfg-field"><label>denoising</label><input type="number" step=".01" id="cfg_denoising" value="0.1"></div>
+          <div class="cfg-field"><label>score</label><div class="btn-group" id="cfg_score_mode"><span class="btn-group-btn active" data-value="max" onclick="selectScoreMode('max')">max</span><span class="btn-group-btn" data-value="mean" onclick="selectScoreMode('mean')">mean</span><span class="btn-group-btn" data-value="p95" onclick="selectScoreMode('p95')">p95</span></div></div>
+        </div>
+        <div style="display:flex;gap:4px;margin:6px 0">
+          <button class="btn" onclick="loadConfig()" style="flex:1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Reset
+          </button>
+          <button class="btn btn-primary" onclick="saveConfig()" style="flex:1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save
+          </button>
+        </div>
+        <div class="progress-bar" id="progressBar" style="display:none"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+        <div id="trainingProgress"></div>
+      </div>
+    </div>
+  </div>
+  <div class="row" style="flex:2">
+    <div class="tile" style="flex:1" data-admin>
+      <div class="tile-header">
+        <span class="hl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          logs
+        </span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm" onclick="document.getElementById('logArea').scrollTop=document.getElementById('logArea').scrollHeight">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <button class="btn btn-sm" onclick="document.getElementById('logArea').innerHTML=''">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <button class="btn btn-sm" onclick="popupLogs()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="tile-body" style="padding:6px;display:flex;flex-direction:column">
+        <div class="log-area" id="logArea"></div>
+      </div>
+    </div>
+    <div class="tile" style="flex:1" data-admin>
+      <div class="tile-header">
+        <span class="hl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          results
+        </span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm" onclick="refreshResults()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+          <button class="btn btn-sm" id="btnPopupResults" onclick="popupResults()" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="tile-body" id="resultsContainer">
+        <div class="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#484f58;font-size:13px;gap:6px"><p>no results yet</p></div>
+      </div>
+    </div>
+    <div class="tile" style="flex:1">
+      <div class="tile-header">
+        <span class="hl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          test
+        </span>
+        <span id="testModelMetrics" style="font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em"></span>
+      </div>
+      <div class="tile-body" style="display:flex;flex-direction:column;gap:4px">
+        <div id="testSelectors" style="display:flex;flex-direction:column;gap:6px;min-height:80px"></div>
+        <div style="display:flex;gap:4px;align-items:center;margin-top:6px">
+          <input type="file" id="testFileInput" accept=".wav,.mp3,.flac,.ogg" style="flex:1" onchange="handleFiles(this.files)" multiple>
+          <button class="btn btn-primary" onclick="predictFile()" style="flex-shrink:0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Analyze
+          </button>
+          <button class="btn" id="micBtn" onclick="toggleMic()" style="flex-shrink:0;min-width:36px;justify-content:center" title="microphone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <span id="recIndicator" style="display:none;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#f85149;flex-shrink:0">
+            <span style="width:8px;height:8px;border-radius:50%;background:#f85149;animation:pulse 1s ease-in-out infinite"></span>
+            REC
+          </span>
+        </div>
+        <div id="fileDropZone" style="display:none;position:relative;border:2px dashed #30363d;border-radius:10px;padding:24px;text-align:center;color:#484f58;font-size:13px;margin-top:4px;transition:all .15s;cursor:pointer">
+          drop audio file here
+        </div>
+        <div id="spectrogramContainer" style="display:none;background:#0d1117;border:1px solid #21262d;border-radius:6px;overflow:hidden;margin-top:4px;max-height:80px">
+          <canvas id="waveformCanvas" width="400" height="70"></canvas>
+        </div>
+        <div id="predictResult" class="hidden" style="text-align:center;padding:12px;background:#0d1117;border:1px solid #21262d;border-radius:6px;flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="score" id="scoreDisplay">0.000000</div>
+          <div class="score-label" id="scoreLabel" style="color:#8b949e">anomaly score</div>
+          <div id="decisionLabel" style="font-size:14px;font-weight:600;margin-top:2px"></div>
+      </div>
+      <div style="border-top:1px solid #21262d;margin-top:4px;padding-top:4px;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+        <div style="font-size:11px;font-weight:600;color:#8b949e;padding:2px 0">history</div>
+        <div id="historyBody" style="flex:1;overflow-y:auto;min-height:0;font-size:12px">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#484f58;font-size:13px">no history yet</div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let datasets = [];
+let statusInterval = null;
+let lastLogSeq = 0;
+let cachedResults = {};
+let wasTraining = false;
+
+function startPolling() {
+  if (statusInterval) return;
+  statusInterval = setInterval(pollStatus, 1200);
+}
+function stopPolling() {
+  if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+}
+startPolling();
+
+async function api(url, opts = {}) {
+  const r = await fetch(url, opts);
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+async function pollStatus() {
+  try { updateStatus(await api('/api/status?since=' + lastLogSeq)); } catch(e) { /* ignore */ }
+}
+
+function updateStatus(s) {
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  const target = document.getElementById('currentTarget');
+  if (s.training) {
+    wasTraining = true;
+    dot.className = 'topbar-dot busy blink';
+    label.textContent = 'training';
+    target.textContent = s.current || '';
+    document.getElementById('btnTrainAll').disabled = true;
+    document.getElementById('btnTrainSel').disabled = true;
+    document.getElementById('btnStop').style.display = '';
+    const ep = document.getElementById('trainEpochInfo');
+    const etaEl = document.getElementById('trainEtaInfo');
+    if (s.current && s.total_epochs > 0) {
+      ep.textContent = `${s.current}  ${s.current_epoch}/${s.total_epochs} ep`;
+      if (s.eta_seconds != null && s.eta_seconds > 0) {
+        const m = Math.floor(s.eta_seconds / 60);
+        const sec = s.eta_seconds % 60;
+        etaEl.textContent = m > 0 ? `ETA ${m}m ${sec}s` : `ETA ${sec}s`;
+      } else {
+        etaEl.textContent = '';
+      }
+    }
+  } else {
+    if (wasTraining) { wasTraining = false; refreshTestModels(); refreshDatasets(); }
+    dot.className = 'topbar-dot idle';
+    label.textContent = 'idle';
+    target.textContent = '';
+    document.getElementById('btnTrainAll').disabled = false;
+    document.getElementById('btnTrainSel').disabled = false;
+    document.getElementById('btnStop').style.display = 'none';
+    document.getElementById('trainEpochInfo').textContent = '';
+    document.getElementById('trainEtaInfo').textContent = '';
+  }
+
+  if (s.log_seq > lastLogSeq) {
+    lastLogSeq = s.log_seq;
+    const logArea = document.getElementById('logArea');
+    const wasAtBottom = logArea.scrollHeight - logArea.scrollTop - logArea.clientHeight < 40;
+    s.logs.forEach(msg => {
+      const d = document.createElement('div');
+      const cls = msg.includes('AUC') || msg.includes('done') || msg.includes('Training done') || msg.includes('finished') ? 'ok' :
+        msg.includes('FATAL') || msg.includes('Error') || msg.includes('error') ? 'err' :
+        msg.includes('warn') || msg.includes('Warn') ? 'warn' : '';
+      d.className = cls;
+      d.textContent = msg;
+      logArea.appendChild(d);
+    });
+    if (wasAtBottom) logArea.scrollTop = logArea.scrollHeight;
+  }
+
+  if (s.progress.length) {
+    let html = '<table><tr><th>dataset</th><th>status</th><th>auc</th></tr>';
+    const total = s.progress.length;
+    const done = s.progress.filter(p => p.status === 'done').length;
+    s.progress.forEach(p => {
+      const cls = p.status === 'done' ? '#3fb950' : p.status === 'error' ? '#f85149' : '#d29922';
+      const icon = p.status === 'done' ? '&#10003;' : p.status === 'error' ? '&#10007;' : '&#8943;';
+      const auc = p.auc !== null ? p.auc.toFixed(6) : '&mdash;';
+      html += `<tr><td style="font-weight:500">${p.key}</td><td style="color:${cls};font-weight:600">${icon} ${p.status}</td><td style="font-weight:700;color:#58a6ff;font-variant-numeric:tabular-nums">${auc}</td></tr>`;
+    });
+    html += '</table>';
+    document.getElementById('trainingProgress').innerHTML = html;
+    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+    const pb = document.getElementById('progressBar');
+    pb.style.display = pct > 0 && pct < 100 ? 'block' : 'none';
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+
+  if (Object.keys(s.results).length) { cachedResults = s.results; renderResults(s.results); refreshTestHeader(); }
+}
+
+async function refreshDatasets() {
+  try {
+    datasets = await api('/api/datasets');
+    const empty = document.getElementById('datasetsEmpty');
+    const table = document.getElementById('datasetsTable');
+    if (!datasets.length) {
+      empty.style.display = 'flex';
+      empty.innerHTML = '<p>no datasets found</p>';
+      table.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    table.style.display = 'block';
+    const tree = {};
+    datasets.forEach(d => {
+      if (!tree[d.machine_type]) tree[d.machine_type] = {};
+      if (!tree[d.machine_type][d.db]) tree[d.machine_type][d.db] = [];
+      tree[d.machine_type][d.db].push(d);
+    });
+    let html = `<div style="padding:4px 8px;font-size:13px;color:#8b949e;display:flex;align-items:center;gap:8px;border-bottom:1px solid #21262d">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#e6edf3">
+        <input type="checkbox" id="selectAllDs" onchange="toggleAllDatasets()">
+        select all
+      </label>
+      <span>found: <strong>${datasets.length}</strong></span>
+    </div>
+    <div class="ds-tree">`;
+    Object.keys(tree).sort().forEach(mType => {
+      const dbs = Object.keys(tree[mType]).sort();
+      html += `<details class="ds-group" open>
+        <summary class="ds-summary">${mType} <span style="color:#484f58;font-weight:400;font-size:10px">(${dbs.length})</span></summary>
+        <div class="ds-children">`;
+      dbs.forEach(db => {
+        const items = tree[mType][db];
+        html += `<details class="ds-group" open>
+          <summary class="ds-summary">${db} <span style="color:#484f58;font-weight:400;font-size:10px">(${items.length})</span></summary>
+          <div class="ds-children ds-ids">`;
+        items.forEach(d => {
+          html += `<label class="ds-item">
+            <input type="checkbox" class="ds-cb" value="${d.key}">
+            ${d.machine_id}
+          </label>`;
+        });
+        html += `</div></details>`;
+      });
+      html += `</div></details>`;
+    });
+    html += '</div>';
+    table.innerHTML = html;
+  } catch(e) {
+    document.getElementById('datasetsEmpty').innerHTML = '<p style="color:#f85149">error: ' + e.message + '</p>';
+  }
+}
+
+function toggleAllDatasets() {
+  const checked = document.getElementById('selectAllDs').checked;
+  document.querySelectorAll('.ds-cb').forEach(cb => cb.checked = checked);
+}
+
+function selectScoreMode(val) {
+  document.querySelectorAll('#cfg_score_mode .btn-group-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.value === val);
+  });
+}
+
+function getScoreMode() {
+  return document.querySelector('#cfg_score_mode .btn-group-btn.active')?.dataset?.value || 'max';
+}
+
+async function loadConfig() {
+  try {
+    const cfg = await api('/api/config');
+    document.getElementById('cfg_epochs').value = cfg.fit.epochs || 200;
+    document.getElementById('cfg_lr').value = cfg.fit.learning_rate || 0.001;
+    document.getElementById('cfg_bottleneck').value = cfg.fit.bottleneck_size || 3;
+    document.getElementById('cfg_beta').value = cfg.fit.beta || 0.1;
+    document.getElementById('cfg_alpha').value = cfg.fit.alpha || 0.1;
+    document.getElementById('cfg_denoising').value = cfg.fit.denoising_std || 0.1;
+    selectScoreMode(cfg.fit.score_mode || 'max');
+  } catch(e) { /* ignore */ }
+}
+
+async function saveConfig() {
+  try {
+    const body = {fit: {
+      epochs: parseInt(document.getElementById('cfg_epochs').value),
+      learning_rate: parseFloat(document.getElementById('cfg_lr').value),
+      bottleneck_size: parseInt(document.getElementById('cfg_bottleneck').value),
+      beta: parseFloat(document.getElementById('cfg_beta').value),
+      alpha: parseFloat(document.getElementById('cfg_alpha').value),
+      denoising_std: parseFloat(document.getElementById('cfg_denoising').value),
+      score_mode: getScoreMode(),
+    }};
+    await api('/api/config', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    loadConfig();
+  } catch(e) { /* ignore */ }
+}
+
+loadConfig();
+
+// ── Admin mode ──
+let isAdmin = false;
+let pwResolve = null;
+
+function toggleAdmin() {
+  if (isAdmin) {
+    isAdmin = false;
+    document.body.classList.add('user-mode');
+    document.getElementById('adminBtn').textContent = 'TEST';
+    document.getElementById('adminRow1').style.display = 'none';
+  } else {
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwModal').classList.add('open');
+    setTimeout(() => document.getElementById('pwInput').focus(), 100);
+  }
+}
+
+function closePwModal() {
+  document.getElementById('pwModal').classList.remove('open');
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorModal');
+  el.querySelector('.modal-body').textContent = msg;
+  el.classList.add('open');
+}
+
+function closeErrorModal() {
+  document.getElementById('errorModal').classList.remove('open');
+}
+
+function submitPw() {
+  const pw = document.getElementById('pwInput').value;
+  if (!pw) return;
+  closePwModal();
+  api('/api/admin/check', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pw})}).then(r => {
+    if (r.ok) {
+      isAdmin = true;
+      document.body.classList.remove('user-mode');
+      document.getElementById('adminBtn').textContent = 'ADMIN';
+      document.getElementById('adminRow1').style.display = '';
+      refreshDatasets();
+      refreshResults();
+      refreshTestModels();
+    } else {
+      showError('Wrong password');
+    }
+  }).catch(() => {});
+}
+
+function startTrain(targets) {
+  api('/api/train', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({targets: targets})}).catch(() => {});
+}
+
+function startTrainSelected() {
+  const selected = Array.from(document.querySelectorAll('.ds-cb:checked')).map(cb => cb.value);
+  if (!selected.length) return;
+  startTrain(selected);
+}
+
+function stopTrain() {
+  api('/api/stop', {method: 'POST'}).catch(() => {});
+}
+
+async function refreshResults() {
+  try { const r = await api('/api/results'); cachedResults = r; renderResults(r); refreshTestHeader(); } catch(e) { /* ignore */ }
+}
+
+function renderResults(results) {
+  const keys = Object.keys(results);
+  const c = document.getElementById('resultsContainer');
+  if (!keys.length) {
+    c.innerHTML = '<div class="empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#484f58;font-size:13px;gap:6px"><p>no results yet</p></div>';
+    document.getElementById('btnPopupResults').style.display = 'none';
+    return;
+  }
+  document.getElementById('btnPopupResults').style.display = '';
+  const aucs = keys.map(k => results[k].AUC);
+  const avg = aucs.reduce((a, b) => a + b, 0) / aucs.length;
+  let html = '<div class="metrics">';
+  html += `<div class="metric"><div class="val">${keys.length}</div><div class="lbl">datasets</div></div>`;
+  const avgCls = avg >= 0.8 ? 'green' : avg >= 0.6 ? 'yellow' : 'red';
+  html += `<div class="metric ${avgCls}"><div class="val">${avg.toFixed(4)}</div><div class="lbl">avg auc</div></div>`;
+  const pauci = keys.map(k => results[k].pAUC !== undefined ? results[k].pAUC : null).filter(v => v !== null);
+  if (pauci.length) {
+    const pavg = pauci.reduce((a, b) => a + b, 0) / pauci.length;
+    const pCls = pavg >= 0.5 ? 'green' : pavg >= 0.3 ? 'yellow' : 'red';
+    html += `<div class="metric ${pCls}"><div class="val">${pavg.toFixed(4)}</div><div class="lbl">avg pauc</div></div>`;
+  }
+  const minV = Math.min(...aucs), maxV = Math.max(...aucs);
+  html += `<div class="metric ${minV >= 0.8 ? 'green' : minV >= 0.6 ? 'yellow' : 'red'}"><div class="val">${minV.toFixed(4)}</div><div class="lbl">min</div></div>`;
+  html += `<div class="metric ${maxV >= 0.8 ? 'green' : maxV >= 0.6 ? 'yellow' : 'red'}"><div class="val">${maxV.toFixed(4)}</div><div class="lbl">max</div></div>`;
+  html += '</div><table><tr><th>dataset</th><th>auc</th><th>pauc</th><th>eer</th><th>f1</th></tr>';
+  keys.sort().forEach(k => {
+    const r = results[k];
+    const v = r.AUC;
+    const color = v >= 0.8 ? '#3fb950' : v >= 0.6 ? '#d29922' : '#f85149';
+    const pa = r.pAUC !== undefined ? r.pAUC.toFixed(4) : '&mdash;';
+    const ee = r.EER !== undefined ? r.EER.toFixed(4) : '&mdash;';
+    const f1 = r.best_F1 !== undefined ? r.best_F1.toFixed(4) : '&mdash;';
+    const did = 'det_' + k.replace(/[^a-zA-Z0-9]/g, '_');
+    html += `<tr onclick="toggleDetail('${did}', this)" style="cursor:pointer">
+      <td style="font-weight:500">${k}</td>
+      <td style="color:${color};font-weight:700;font-variant-numeric:tabular-nums">${v.toFixed(6)}</td>
+      <td style="font-variant-numeric:tabular-nums">${pa}</td>
+      <td style="font-variant-numeric:tabular-nums">${ee}</td>
+      <td style="font-variant-numeric:tabular-nums">${f1}</td></tr>`;
+    html += `<tr id="${did}" style="display:none"><td colspan="5" style="padding:0">`;
+    html += buildDetail(r);
+    html += '</td></tr>';
+  });
+  html += '</table>';
+  c.innerHTML = html;
+}
+
+function buildDetail(r) {
+  let h = '<div class="detail open">';
+  if (r.config) {
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;font-size:10px;color:#8b949e">';
+    for (const [k, v] of Object.entries(r.config)) {
+      h += `<span style="background:#21262d;padding:1px 6px;border-radius:3px">${k}: ${v}</span>`;
+    }
+    h += '</div>';
+  }
+  if (r.normal_scores) {
+    h += '<div class="stats-grid">';
+    h += '<div class="stat-col green"><div class="title">normal</div>' + scoreTable(r.normal_scores) + '</div>';
+    h += '<div class="stat-col red"><div class="title">anomal</div>' + scoreTable(r.anomal_scores) + '</div>';
+    h += '</div>';
+  }
+  if (r.histogram) h += histHTML(r.histogram);
+  h += '</div>';
+  return h;
+}
+
+function scoreTable(s) {
+  const rows = [['count',s.count],['mean',s.mean.toFixed(4)],['std',s.std.toFixed(4)],['median',s.median.toFixed(4)],['min',s.min.toFixed(4)],['max',s.max.toFixed(4)],['p5',s.p5.toFixed(4)],['p95',s.p95.toFixed(4)]];
+  let t = '<table>';
+  rows.forEach(([k,v]) => t += `<tr><td style="color:#8b949e;padding:1px 4px;border:none">${k}</td><td style="padding:1px 4px;border:none;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${v}</td></tr>`);
+  t += '</table>';
+  return t;
+}
+
+function histHTML(h) {
+  const edges = h.bin_edges, norm = h.normal, anom = h.anomal;
+  const maxVal = Math.max(...norm, ...anom, 1);
+  let html = '<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:#8b949e;margin:4px 0 2px">';
+  html += '<span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:2px;background:#3fb950;opacity:.6"></span> normal</span>';
+  html += '<span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:2px;background:#f85149;opacity:.6"></span> anomal</span>';
+  html += '</div><div class="hist">';
+  for (let i = 0; i < norm.length; i++) {
+    const nH = Math.max((norm[i] / maxVal) * 44, 1);
+    const aH = Math.max((anom[i] / maxVal) * 44, 1);
+    html += '<div class="hist-bar">';
+    if (anom[i] > 0) html += `<div class="hist-fill-a" style="height:${aH}px"></div>`;
+    if (norm[i] > 0) html += `<div class="hist-fill-n" style="height:${nH}px"></div>`;
+    html += `<div class="hist-lbl">${edges[i].toFixed(1)}</div></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function toggleDetail(id, el) {
+  const container = el?.closest?.('.modal-body, #resultsContainer, table');
+  if (!container) return;
+  const target = container.querySelector('#' + CSS.escape(id));
+  if (!target) return;
+  const isHidden = target.style.display === 'none' || target.style.display === '';
+  target.style.display = isHidden ? 'table-row' : 'none';
+}
+
+function popupResults() {
+  const src = document.getElementById('resultsContainer');
+  const content = src.innerHTML;
+  if (!content || content.includes('no results yet')) return;
+  document.getElementById('resultsModalBody').innerHTML = content;
+  document.getElementById('resultsModal').classList.add('open');
+}
+
+function closeResultsModal() {
+  document.getElementById('resultsModal').classList.remove('open');
+}
+
+function popupLogs() {
+  const src = document.getElementById('logArea');
+  const dst = document.getElementById('logAreaModal');
+  dst.innerHTML = src.innerHTML;
+  dst.scrollTop = src.scrollTop;
+  document.getElementById('logsModal').classList.add('open');
+}
+
+function closeLogsModal() {
+  document.getElementById('logsModal').classList.remove('open');
+}
+
+
+let testSelections = {type: '', id: '', db: ''};
+
+function refreshTestHeader() {
+  const el = document.getElementById('testModelMetrics');
+  if (testSelections.type && testSelections.id && testSelections.db) {
+    const key = `${testSelections.type}_${testSelections.id}_${testSelections.db}`;
+    const r = cachedResults[key];
+    if (r && r.AUC !== undefined) {
+      const auc = r.AUC.toFixed(4);
+      const pauc = r.pAUC !== undefined ? r.pAUC.toFixed(4) : '--';
+      const aucCls = r.AUC >= 0.8 ? '#3fb950' : r.AUC >= 0.6 ? '#d29922' : '#f85149';
+      const pCls = r.pAUC >= 0.8 ? '#3fb950' : r.pAUC >= 0.6 ? '#d29922' : '#f85149';
+      el.innerHTML = `<span style="color:${aucCls}">AUC ${auc}</span> <span style="color:#8b949e">|</span> <span style="color:${pCls}">pAUC ${pauc}</span>`;
+      return;
+    }
+  }
+  el.textContent = '';
+}
+
+function selectChip(col, value) {
+  testSelections[col] = value;
+  document.querySelectorAll(`#testSelectors .sel-col[data-col="${col}"] .btn-group-btn`).forEach(c => {
+    c.classList.toggle('active', c.dataset.value === value);
+  });
+  refreshTestHeader();
+}
+
+async function refreshTestModels() {
+  try {
+    const models = await api('/api/models');
+    const types = new Set(), ids = new Set(), dbs = new Set();
+    models.forEach(m => {
+      if (m.key === 'conditional') return;
+      const p = m.key.split('_');
+      if (p.length >= 4) {
+        const db = p.slice(-2).join('_');
+        const id = p.slice(-4, -2).join('_');
+        const type = p.slice(0, -4).join('_');
+        types.add(type);
+        ids.add(id);
+        dbs.add(db);
+      }
+    });
+    const cols = [
+      {key: 'type', label: 'type', items: [...types].sort()},
+      {key: 'id', label: 'id', items: [...ids].sort((a,b)=>a.localeCompare(b))},
+      {key: 'db', label: 'snr', items: [...dbs].sort()},
+    ];
+    const container = document.getElementById('testSelectors');
+    container.innerHTML = '';
+    cols.forEach(col => {
+      const colDiv = document.createElement('div');
+      colDiv.className = 'sel-col';
+      colDiv.dataset.col = col.key;
+      let html = `<div class="sel-col-label">${col.label}</div><div class="btn-group">`;
+      col.items.forEach(v => {
+        html += `<span class="btn-group-btn" data-value="${v}" onclick="selectChip('${col.key}','${v}')">${v}</span>`;
+      });
+      html += '</div>';
+      colDiv.innerHTML = html;
+      container.appendChild(colDiv);
+    });
+  } catch(e) { /* ignore */ }
+}
+
+// Waveform preview
+function drawWaveform(canvas, samples) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#58a6ff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  const step = Math.max(1, Math.floor(samples.length / w));
+  const mid = h / 2;
+  for (let x = 0; x < w; x++) {
+    const i = Math.floor(x * samples.length / w);
+    const val = samples[Math.min(i, samples.length - 1)] || 0;
+    const y = mid + val * mid * 0.9;
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#58a6ff22';
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  for (let x = 0; x < w; x++) {
+    const i = Math.floor(x * samples.length / w);
+    const val = samples[Math.min(i, samples.length - 1)] || 0;
+    ctx.lineTo(x, mid + val * mid * 0.9);
+  }
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fill();
+  document.getElementById('spectrogramContainer').style.display = 'block';
+}
+
+function readAudioFile(file) {
+  const canvas = document.getElementById('waveformCanvas');
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await ctx.decodeAudioData(e.target.result);
+      const ch = buf.getChannelData(0);
+      // Downsample to ~2000 points for display
+      const target = 2000;
+      const step = Math.max(1, Math.floor(ch.length / target));
+      const down = [];
+      for (let i = 0; i < ch.length; i += step) down.push(ch[i]);
+      drawWaveform(canvas, down);
+      ctx.close();
+    } catch { /* ignore */ }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Drag-n-drop test file
+(function() {
+  const testBody = document.querySelector('#testSelectors')?.closest?.('.tile-body');
+  if (!testBody) return;
+  const dropZone = document.getElementById('fileDropZone');
+  const fileInput = document.getElementById('testFileInput');
+  let dragTimer = null;
+  testBody.addEventListener('dragenter', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.style.display = 'block';
+  });
+  testBody.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.style.borderColor = '#58a6ff';
+    dropZone.style.color = '#58a6ff';
+    dropZone.style.background = 'rgba(88,166,255,0.05)';
+    clearTimeout(dragTimer);
+  });
+  testBody.addEventListener('dragleave', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.relatedTarget && testBody.contains(e.relatedTarget)) return;
+    dropZone.style.borderColor = '#30363d';
+    dropZone.style.color = '#484f58';
+    dropZone.style.background = 'transparent';
+    dragTimer = setTimeout(() => { dropZone.style.display = 'none'; }, 200);
+  });
+  testBody.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.style.borderColor = '#30363d';
+    dropZone.style.color = '#484f58';
+    dropZone.style.background = 'transparent';
+    dropZone.style.display = 'none';
+    clearTimeout(dragTimer);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      predictFile();
+    }
+  });
+  dropZone.addEventListener('click', () => { dropZone.style.display = 'none'; fileInput.click(); });
+})();
+
+// ── Batch test ──
+let batchResults = [];
+
+function handleFiles(files) {
+  if (!files.length) return;
+  if (files.length === 1) {
+    readAudioFile(files[0]);
+    return;
+  }
+  document.getElementById('spectrogramContainer').style.display = 'none';
+  document.getElementById('predictResult').style.display = 'flex';
+  document.getElementById('scoreDisplay').textContent = `${files.length} files selected`;
+  document.getElementById('scoreDisplay').className = 'score';
+  document.getElementById('decisionLabel').textContent = 'click Analyze';
+  document.getElementById('decisionLabel').style.color = '#8b949e';
+  batchResults = Array.from(files);
+}
+
+async function predictFile() {
+  const files = batchResults.length ? batchResults : (document.getElementById('testFileInput').files[0] ? [document.getElementById('testFileInput').files[0]] : []);
+  if (!files.length) return;
+  if (!testSelections.type || !testSelections.id || !testSelections.db) return;
+  const modelKey = `${testSelections.type}_${testSelections.id}_${testSelections.db}`;
+  const btn = document.querySelector('button[onclick*="predictFile"]');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin" style="width:14px;height:14px;animation:spin .8s linear infinite"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg> Processing`;
+
+  if (files.length === 1) {
+    await predictOne(files[0], modelKey);
+  } else {
+    await predictBatch(files, modelKey);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Analyze`;
+}
+
+async function predictOne(file, modelKey) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('model_key', modelKey);
+  try {
+    const r = await api('/api/predict', {method: 'POST', body: form});
+    const c = document.getElementById('predictResult');
+    const s = document.getElementById('scoreDisplay');
+    c.classList.remove('hidden');
+    c.style.display = 'flex';
+    s.textContent = r.score_str;
+    const th = r.best_threshold ?? 0.5;
+    const isAnomaly = r.score > th;
+    s.className = 'score' + (isAnomaly ? ' high' : ' low');
+    document.getElementById('decisionLabel').textContent = isAnomaly ? 'anomaly' : 'normal';
+    document.getElementById('decisionLabel').style.color = isAnomaly ? '#f85149' : '#3fb950';
+    addHistory({name: file.name, score: r.score_str, threshold: th, anomaly: isAnomaly, key: modelKey});
+  } catch(e) { /* ignore */ }
+}
+
+// ── Test history ──
+let testHistory = [];
+
+function addHistory(entry) {
+  testHistory.unshift(entry);
+  if (testHistory.length > 50) testHistory.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyBody');
+  if (!testHistory.length) {
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#484f58;font-size:13px">no history yet</div>';
+    return;
+  }
+  el.innerHTML = testHistory.map(h => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;font-size:12px">
+    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8b949e">${h.name}</span>
+    <span style="font-weight:600;font-variant-numeric:tabular-nums;color:${h.anomaly?'#f85149':'#3fb950'}">${h.score}</span>
+    <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:${h.anomaly?'#f85149':'#3fb950'};color:#0d1117">${h.anomaly?'A':'N'}</span>
+  </div>`).join('');
+}
+
+async function predictBatch(files, modelKey) {
+  const c = document.getElementById('predictResult');
+  c.classList.remove('hidden');
+  c.style.display = 'flex';
+  c.style.textAlign = 'left';
+  c.style.padding = '4px';
+  const results = [];
+  for (let i = 0; i < files.length; i++) {
+    const form = new FormData();
+    form.append('file', files[i]);
+    form.append('model_key', modelKey);
+    try {
+      const r = await api('/api/predict', {method: 'POST', body: form});
+      const th = r.best_threshold ?? 0.5;
+      results.push({name: files[i].name, score: r.score, score_str: r.score_str, threshold: th, anomaly: r.score > th});
+    } catch { results.push({name: files[i].name, score: 0, score_str: 'error', threshold: 0.5, anomaly: false}); }
+    // Update progress
+    c.innerHTML = `<div style="font-size:11px;color:#8b949e;margin-bottom:4px">${i+1}/${files.length}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr><th style="text-align:left;padding:2px 4px;color:#8b949e;border-bottom:1px solid #21262d">file</th>
+        <th style="text-align:right;padding:2px 4px;color:#8b949e;border-bottom:1px solid #21262d">score</th>
+        <th style="text-align:center;padding:2px 4px;color:#8b949e;border-bottom:1px solid #21262d">label</th></tr>
+        ${results.map(r => `<tr><td style="padding:2px 4px;border-bottom:1px solid #21262d;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</td>
+        <td style="padding:2px 4px;border-bottom:1px solid #21262d;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:${r.anomaly?'#f85149':'#3fb950'}">${r.score_str}</td>
+        <td style="padding:2px 4px;border-bottom:1px solid #21262d;text-align:center;font-weight:600;color:${r.anomaly?'#f85149':'#3fb950'}">${r.anomaly?'A':'N'}</td></tr>`).join('')}
+      </table>`;
+  }
+  batchResults = [];
+}
+
+// ── Microphone ──
+let micMediaRecorder = null;
+let micStream = null;
+let micActive = false;
+let micInterval = null;
+
+async function toggleMic() {
+  if (micActive) {
+    stopMic();
+    return;
+  }
+  if (!testSelections.type || !testSelections.id || !testSelections.db) return;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micActive = true;
+    const btn = document.getElementById('micBtn');
+    btn.classList.add('btn-danger');
+    btn.style.borderColor = '#f85149';
+    btn.style.color = '#f85149';
+    btn.title = 'stop recording';
+    document.getElementById('recIndicator').style.display = 'flex';
+    const c = document.getElementById('predictResult');
+    c.style.display = 'flex';
+    document.getElementById('scoreDisplay').textContent = 'listening...';
+    document.getElementById('scoreDisplay').className = 'score';
+    document.getElementById('decisionLabel').textContent = '';
+    document.getElementById('spectrogramContainer').style.display = 'none';
+
+    const chunks = [];
+    const mr = new MediaRecorder(micStream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
+    micMediaRecorder = mr;
+    mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    mr.onstop = async () => {
+      if (!chunks.length) return;
+      const blob = new Blob(chunks, { type: mr.mimeType });
+      const modelKey = `${testSelections.type}_${testSelections.id}_${testSelections.db}`;
+      const form = new FormData();
+      form.append('file', blob, 'mic_chunk.webm');
+      form.append('model_key', modelKey);
+      try {
+        const r = await api('/api/predict', { method: 'POST', body: form });
+        const s = document.getElementById('scoreDisplay');
+        const th = r.best_threshold ?? 0.5;
+        const isAnomaly = r.score > th;
+        s.textContent = r.score_str;
+        s.className = 'score' + (isAnomaly ? ' high' : ' low');
+        document.getElementById('decisionLabel').textContent = isAnomaly ? 'anomaly' : 'normal';
+        document.getElementById('decisionLabel').style.color = isAnomaly ? '#f85149' : '#3fb950';
+        addHistory({name: 'mic', score: r.score_str, threshold: th, anomaly: isAnomaly, key: modelKey});
+      } catch { /* ignore */ }
+      chunks.length = 0;
+    };
+    // Record 2s chunks continuously
+    mr.start(2000);
+    micInterval = setInterval(() => {
+      if (mr.state === 'recording') mr.stop();
+      if (micActive && mr.state === 'inactive') mr.start(2000);
+    }, 2200);
+  } catch(e) {
+    document.getElementById('scoreDisplay').textContent = 'mic error';
+    document.getElementById('scoreDisplay').className = 'score';
+    document.getElementById('decisionLabel').textContent = 'denied or not available';
+    document.getElementById('decisionLabel').style.color = '#f85149';
+    document.getElementById('predictResult').style.display = 'flex';
+  }
+}
+
+function stopMic() {
+  micActive = false;
+  if (micInterval) { clearInterval(micInterval); micInterval = null; }
+  if (micMediaRecorder && micMediaRecorder.state !== 'inactive') {
+    micMediaRecorder.stop();
+  }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  document.getElementById('recIndicator').style.display = 'none';
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('btn-danger');
+  btn.style.borderColor = '';
+  btn.style.color = '';
+  btn.title = 'microphone';
+  if (!document.getElementById('testFileInput').files[0]) {
+    document.getElementById('predictResult').style.display = 'none';
+  }
+}
+
+loadConfig();
+refreshDatasets();
+refreshResults();
+refreshTestModels();
+document.getElementById('adminRow1').style.display = 'none';
+</script>
+
+<div class="modal-overlay" id="pwModal" onclick="if(event.target===this)closePwModal()">
+  <div class="modal-box" style="width:360px;height:auto;max-height:auto">
+    <div class="modal-header">
+      <span class="hl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        admin access
+      </span>
+      <button onclick="closePwModal()">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <input type="password" id="pwInput" placeholder="Enter password" style="padding:10px 12px;border:1px solid #30363d;border-radius:8px;background:#0d1117;color:#e6edf3;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')submitPw()">
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="closePwModal()" style="flex:1">Cancel</button>
+        <button class="btn btn-primary" onclick="submitPw()" style="flex:1">Enter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="errorModal" onclick="if(event.target===this)closeErrorModal()">
+  <div class="modal-box" style="width:360px;height:auto;max-height:auto">
+    <div class="modal-header">
+      <span class="hl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        error
+      </span>
+      <button onclick="closeErrorModal()">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:16px;display:flex;flex-direction:column;gap:12px;font-size:13px;color:#e6edf3"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="resultsModal" onclick="if(event.target===this)closeResultsModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="hl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        results
+      </span>
+      <button onclick="closeResultsModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="resultsModalBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="logsModal" onclick="if(event.target===this)closeLogsModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="hl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        logs
+      </span>
+      <button onclick="closeLogsModal()">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:6px;display:flex;flex-direction:column">
+      <div class="log-area" id="logAreaModal"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
